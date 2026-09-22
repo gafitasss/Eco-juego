@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ECO — Juego Masivo</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:#080b14;
+  color:#f5f7ff;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+#app{
+  max-width:620px;
+  margin:auto;
+  padding:18px;
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:18px;
+}
+.logo{
+  font-size:26px;
+  font-weight:900;
+  letter-spacing:3px;
+}
+.round{
+  background:#171c2c;
+  padding:8px 12px;
+  border-radius:20px;
+  font-size:13px;
+  color:#aeb8d8;
+}
+.hero{
+  background:linear-gradient(145deg,#151c38,#101423);
+  border:1px solid #27304c;
+  border-radius:24px;
+  padding:22px;
+  margin-bottom:15px;
+}
+.tag{
+  color:#8ea7ff;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+}
+h1{
+  margin:8px 0;
+  font-size:28px;
+  line-height:1.1;
+}
+.description{
+  color:#aeb7cf;
+  line-height:1.5;
+  font-size:15px;
+}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:9px;
+  margin-top:18px;
+}
+.stat{
+  background:#0c101d;
+  border-radius:15px;
+  padding:12px 8px;
+  text-align:center;
+}
+.stat b{
+  display:block;
+  font-size:21px;
+}
+.stat span{
+  font-size:11px;
+  color:#8791ad;
+}
+.question{
+  font-size:20px;
+  font-weight:800;
+  margin:20px 0 13px;
+}
+.choices{
+  display:grid;
+  gap:10px;
+}
+button{
+  width:100%;
+  border:0;
+  min-height:58px;
+  border-radius:17px;
+  color:#fff;
+  background:#1b2236;
+  border:1px solid #303a59;
+  font-size:16px;
+  font-weight:750;
+  text-align:left;
+  padding:14px 16px;
+  cursor:pointer;
+  transition:.15s;
+}
+button:active{
+  transform:scale(.98);
+}
+.choice-title{
+  display:block;
+}
+.choice-info{
+  display:block;
+  color:#8994b2;
+  font-size:12px;
+  margin-top:4px;
+  font-weight:500;
+}
+button.selected{
+  border-color:#8098ff;
+  background:#26345f;
+}
+button.primary{
+  background:#667dff;
+  border-color:#8497ff;
+  text-align:center;
+}
+#result{
+  display:none;
+}
+.event{
+  margin-top:15px;
+  padding:15px;
+  background:#111729;
+  border-left:4px solid #7f93ff;
+  border-radius:12px;
+  color:#c5cce0;
+  line-height:1.45;
+}
+.small{
+  color:#8994b2;
+  font-size:13px;
+}
+</style>
+</head>
+
+<body>
+<div id="app">
+
+<header>
+  <div class="logo">ECO</div>
+  <div class="round" id="round">Ronda 1 / 5</div>
+</header>
+
+<section class="hero">
+  <div class="tag">Estado del mundo</div>
+  <h1 id="worldTitle">La ciudad despierta</h1>
+  <div class="description" id="description">
+    Algo ha cambiado durante la noche. Nadie sabe todavía quién lo provocó.
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <b id="energy">64</b>
+      <span>ENERGÍA</span>
+    </div>
+    <div class="stat">
+      <b id="trust">52</b>
+      <span>CONFIANZA</span>
+    </div>
+    <div class="stat">
+      <b id="chaos">31</b>
+      <span>CAOS</span>
+    </div>
+  </div>
+</section>
+
+<section id="game">
+  <div class="small">DECISIÓN SECRETA</div>
+
+  <div class="question" id="question">
+    La ciudad encuentra una fuente de energía desconocida. ¿Qué haces?
+  </div>
+
+  <div class="choices" id="choices"></div>
+</section>
+
+<section id="result">
+  <div class="hero">
+    <div class="tag">Resultado</div>
+    <h1 id="resultTitle"></h1>
+    <div class="description" id="resultText"></div>
+    <div class="event" id="event"></div>
+    <br>
+    <button class="primary" id="next">Continuar</button>
+  </div>
+</section>
+
+</div>
+
+<script>
+(() => {
+
+const state = {
+  round: 1,
+  maxRounds: 5,
+  energy: 64,
+  trust: 52,
+  chaos: 31,
+  score: 0,
+  selected: null
+};
+
+const rounds = [
+  {
+    title:"La ciudad despierta",
+    description:"Algo ha cambiado durante la noche. Nadie sabe todavía quién lo provocó.",
+    question:"La ciudad encuentra una fuente de energía desconocida. ¿Qué haces?",
+    choices:[
+      ["Absorberla","Mucho poder, pero nadie conoce el precio.","energy"],
+      ["Estudiarla","Intentas comprenderla antes de actuar.","trust"],
+      ["Destruirla","Eliminas el riesgo antes de que crezca.","chaos"]
+    ]
+  },
+  {
+    title:"La señal",
+    description:"Miles de dispositivos reciben exactamente el mismo mensaje.",
+    question:"Una voz desconocida pide una respuesta. ¿Cómo reaccionas?",
+    choices:[
+      ["Responder","Quizá haya alguien al otro lado.","trust"],
+      ["Rastrearla","Intentas descubrir su origen.","energy"],
+      ["Ignorarla","No vas a jugar según sus reglas.","chaos"]
+    ]
+  },
+  {
+    title:"La multitud",
+    description:"Una parte de la población empieza a actuar de manera extraña.",
+    question:"¿Qué haces con la información que tienes?",
+    choices:[
+      ["Compartirla","Todos merecen saberlo.","trust"],
+      ["Ocultarla","El pánico podría ser peor.","energy"],
+      ["Manipularla","Puedes convertir el caos en ventaja.","chaos"]
+    ]
+  },
+  {
+    title:"La grieta",
+    description:"Aparece una anomalía que parece reaccionar a las decisiones del grupo.",
+    question:"La anomalía está creciendo. ¿Cuál es tu movimiento?",
+    choices:[
+      ["Acercarte","Quieres descubrir qué hay dentro.","energy"],
+      ["Esperar","Observas cómo evoluciona.","trust"],
+      ["Provocarla","Quieres comprobar hasta dónde llega.","chaos"]
+    ]
+  },
+  {
+    title:"El último eco",
+    description:"Todo lo ocurrido parece formar parte de un mismo patrón.",
+    question:"Tienes una última oportunidad para cambiar el destino de la ciudad.",
+    choices:[
+      ["Salvarla","El futuro del grupo está por encima de ti.","trust"],
+      ["Controlarla","Si la controlas, controlas el futuro.","energy"],
+      ["Romperlo todo","Quizá el mundo necesite empezar de cero.","chaos"]
+    ]
+  }
+];
+
+const $ = id => document.getElementById(id);
+
+function clamp(n){
+  return Math.max(0,Math.min(100,n));
+}
+
+function renderWorld(){
+  $("energy").textContent = state.energy;
+  $("trust").textContent = state.trust;
+  $("chaos").textContent = state.chaos;
+  $("round").textContent =
+    `Ronda ${state.round} / ${state.maxRounds}`;
+}
+
+function renderRound(){
+
+  const r = rounds[state.round - 1];
+
+  $("worldTitle").textContent = r.title;
+  $("description").textContent = r.description;
+  $("question").textContent = r.question;
+
+  const container = $("choices");
+  container.innerHTML = "";
+
+  r.choices.forEach((choice,index) => {
+
+    const button = document.createElement("button");
+
+    button.innerHTML =
+      `<span class="choice-title">${choice[0]}</span>
+       <span class="choice-info">${choice[1]}</span>`;
+
+    button.addEventListener("click", () => {
+
+      document.querySelectorAll(".choices button")
+        .forEach(b => b.classList.remove("selected"));
+
+      button.classList.add("selected");
+
+      state.selected = {
+        index,
+        type:choice[2],
+        name:choice[0]
+      };
+
+      setTimeout(resolveRound,350);
+    });
+
+    container.appendChild(button);
+  });
+
+  $("game").style.display="block";
+  $("result").style.display="none";
+}
+
+function resolveRound(){
+
+  if(!state.selected) return;
+
+  const type = state.selected.type;
+
+  const changes = {
+    energy:0,
+    trust:0,
+    chaos:0
+  };
+
+  if(type === "energy"){
+    changes.energy = 12;
+    changes.chaos = 7;
+    state.score += 15;
+  }
+
+  if(type === "trust"){
+    changes.trust = 12;
+    changes.energy = -4;
+    state.score += 12;
+  }
+
+  if(type === "chaos"){
+    changes.chaos = -12;
+    changes.energy = -7;
+    state.score += 18;
+  }
+
+  state.energy = clamp(state.energy + changes.energy);
+  state.trust = clamp(state.trust + changes.trust);
+  state.chaos = clamp(state.chaos + changes.chaos);
+
+  let events = [];
+
+  if(state.chaos >= 70){
+    events.push("⚠️ El exceso de caos provoca una reacción inesperada.");
+    state.energy = clamp(state.energy - 8);
+  }
+
+  if(state.trust >= 75){
+    events.push("🤝 La población empieza a colaborar espontáneamente.");
+    state.energy = clamp(state.energy + 6);
+  }
+
+  if(state.energy <= 20){
+    events.push("🔋 La ciudad entra en modo de emergencia.");
+    state.trust = clamp(state.trust - 6);
+  }
+
+  if(events.length === 0){
+    const randomEvents = [
+      "👁️ Alguien observa tus decisiones desde las sombras.",
+      "📡 Una señal desconocida acaba de aparecer.",
+      "🌀 Algo ha cambiado, pero nadie sabe exactamente qué.",
+      "🧩 Una pieza del misterio acaba de encajar.",
+      "🎭 El grupo no es consciente de todas las consecuencias."
+    ];
+
+    events.push(
+      randomEvents[Math.floor(Math.random()*randomEvents.length)]
+    );
+  }
+
+  $("game").style.display="none";
+  $("result").style.display="block";
+
+  $("resultTitle").textContent =
+    `Has elegido: ${state.selected.name}`;
+
+  $("resultText").textContent =
+    `Tu decisión ha modificado el estado de la ciudad.`;
+
+  $("event").innerHTML =
+    events.join("<br><br>") +
+    `<br><br><strong>+${state.score > 0 ? (type==="chaos"?18:type==="energy"?15:12):0} puntos</strong>`;
+
+  renderWorld();
+
+  state.selected = null;
+}
+
+$("next").addEventListener("click", () => {
+
+  if(state.round >= state.maxRounds){
+    finishGame();
+    return;
+  }
+
+  state.round++;
+  renderWorld();
+  renderRound();
+});
+
+function finishGame(){
+
+  let ending;
+
+  if(state.chaos >= 70){
+    ending = "🔥 EL MUNDO SE ROMPIÓ";
+  } else if(state.energy >= 75){
+    ending = "⚡ LA CIUDAD ASCENDIÓ";
+  } else if(state.trust >= 70){
+    ending = "🤝 LA HUMANIDAD SOBREVIVIÓ";
+  } else {
+    ending = "🌀 NADIE SABE QUÉ HA PASADO";
+  }
+
+  $("resultTitle").textContent = ending;
+
+  $("resultText").innerHTML =
+    `Puntuación: <strong>${state.score}</strong><br><br>` +
+    `Energía: ${state.energy}<br>` +
+    `Confianza: ${state.trust}<br>` +
+    `Caos: ${state.chaos}`;
+
+  $("event").textContent =
+    "Esta es solamente la primera capa de ECO. " +
+    "En la versión multijugador, las decisiones de todos los jugadores " +
+    "modificarán conjuntamente el mundo.";
+
+  $("next").textContent = "Jugar otra partida";
+
+  $("next").onclick = () => location.reload();
+}
+
+renderWorld();
+renderRound();
+
+})();
+</script>
+
+</body>
+</html>
